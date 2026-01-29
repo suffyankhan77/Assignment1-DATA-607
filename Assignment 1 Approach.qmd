@@ -1,0 +1,21 @@
+---
+title: "Assignment DATA607 Approach"
+author: "Muhammad Suffyan Khan"
+format: html
+editor: visual
+date: "1/29/2026"
+---
+
+## Dataset Source
+
+The dataset used for this assignment is the NYC 311 Service Requests dataset, which records non emergency service requests submitted by residents of New York City. The data includes information such as complaint type, responsible agency, borough, request status, and timestamps for when requests were created and closed. The original data is derived from NYC Open Data and distributed in CSV format. Source Link: https://www.kaggle.com/search?q=NYC+311+Service+Requests
+
+## Motivation for Dataset Selection
+
+This dataset was selected because it represents a realistic and widely used urban administrative data source that is highly relevant to data science and public policy analysis. The NYC 311 dataset reflects real-world challenges in data acquisition and management, including working with categorical variables, date-time fields, and missing values.
+
+Additionally, the dataset’s focus on New York City makes it directly applicable to analyzing service demand, operational efficiency, and citizen-reported issues, aligning well with the course’s emphasis on practical, professional data workflows.
+
+## Planned Approach
+
+The planned approach involves loading the dataset from the GitHub repository into R, selecting a subset of relevant columns, and renaming variables to improve clarity and readability. Where appropriate, data values will be transformed into more interpretable formats, such as converting date strings into date time objects or standardizing categorical values.
