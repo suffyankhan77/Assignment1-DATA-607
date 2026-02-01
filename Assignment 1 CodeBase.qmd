@@ -10,7 +10,7 @@ execute:
 
 ## Dataset Source
 
-The dataset used for this assignment is the NYC 311 Service Requests dataset, which records non emergency service requests submitted by residents of New York City. The data includes information such as complaint type, responsible agency, borough, request status, and timestamps for when requests were created and closed. The original data is derived from NYC Open Data and distributed in CSV format. Source Link: https://www.kaggle.com/search?q=NYC+311+Service+Requests
+The dataset used for this assignment is the NYC 311 Service Requests dataset, which records non emergency service requests submitted by residents of New York City. The data includes information such as complaint type, responsible agency, borough, request status, and timestamps for when requests were created and closed. The original data is derived from NYC Open Data and distributed in CSV format. Source Link: https://www.kaggle.com/datasets/bilalcagralgan/311-service-requestscsv
 
 ## Motivation for Dataset Selection
 
@@ -226,3 +226,4 @@ Comparing total service requests across boroughs highlights differences in repor
 This assignment demonstrated a reproducible workflow for acquiring and transforming a real-world administrative dataset using R and Quarto. The NYC 311 service request data was loaded directly from a public GitHub repository, column names were standardized for consistent use in code, and a meaningful subset of variables was selected to support downstream analysis. Key data preparation steps included handling missing values appropriately and converting timestamp fields into usable datetime formats.
 
 As a creative extension, I explored the distribution of complaint types across NYC by identifying the most frequent complaint categories, and I performed simple rule-based feature engineering to classify complaints into priority tiers. I also compared request volumes across boroughs to highlight differences in service demand by location.
+
