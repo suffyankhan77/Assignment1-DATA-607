@@ -1,0 +1,228 @@
+---
+title: "Assignment 1 DATA607: Basic Data Loading and Transformation (NYC 311)"
+author: "Muhammad Suffyan Khan"
+format: html
+editor: visual
+date: "2/01/2026"
+execute:
+  echo: true
+---
+
+## Dataset Source
+
+The dataset used for this assignment is the NYC 311 Service Requests dataset, which records non emergency service requests submitted by residents of New York City. The data includes information such as complaint type, responsible agency, borough, request status, and timestamps for when requests were created and closed. The original data is derived from NYC Open Data and distributed in CSV format. Source Link: https://www.kaggle.com/search?q=NYC+311+Service+Requests
+
+## Motivation for Dataset Selection
+
+This dataset was selected because it represents a realistic and widely used urban administrative data source that is highly relevant to data science and public policy analysis. The NYC 311 dataset reflects real-world challenges in data acquisition and management, including working with categorical variables, date-time fields, and missing values.
+
+Additionally, the dataset’s focus on New York City makes it directly applicable to analyzing service demand, operational efficiency, and citizen-reported issues, aligning well with the course’s emphasis on practical, professional data workflows.
+
+## Planned Approach
+
+The planned approach involves loading the dataset from the GitHub repository into R, selecting a subset of relevant columns, and standardizing column names to improve clarity and reproducibility. Where appropriate, data values will be transformed into more interpretable formats, such as converting date strings into date time objects or standardizing categorical values.
+
+## Libraries Loaded
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(lubridate)
+```
+
+## Dataset Loaded
+
+```{r}
+nyc_311 <- read.csv(
+  "https://raw.githubusercontent.com/suffyankhan77/Assignment1-DATA-607/main/311-service-requests.csv",
+  stringsAsFactors = FALSE,
+  na.strings = c("", "NA", "N/A")
+)
+
+
+
+head(nyc_311)
+```
+
+## Standarized Data
+
+```{r}
+
+colnames(nyc_311) <- janitor::make_clean_names(colnames(nyc_311))
+
+# Verify cleaned names
+colnames(nyc_311)
+```
+
+## Work Done
+
+The dataset is loaded directly from a public GitHub repository to ensure reproducibility. After loading the data into R, an initial preview is performed to validate that the data was read correctly and to inspect the available variables. Instead of fighting spaces/case, I standardized column names once, then selection becomes trivial and clean.
+
+## Data Inspection
+
+Before performing transformations, the dataset structure and available variables are inspected to understand data types and naming conventions.
+
+```{r}
+
+str(nyc_311)
+# Total rows loaded
+nrow(nyc_311)
+```
+
+## Column Selection
+
+A subset of relevant variables is selected to focus on key attributes of each service request, including the type of complaint, responsible agency, location, status, and request timing. This reduces complexity and prepares the data for clearer downstream analysis. Some records contain missing values in key fields. For this introductory transformation exercise, I removed incomplete rows from the selected subset to simplify downstream analysis and ensure consistent datetime parsing but not in Closed Date column because the request can be still open.
+
+```{r}
+# Select a subset of relevant columns
+nyc_311_subset <- nyc_311 %>%
+  select(
+    complaint_type,
+    descriptor,
+    borough,
+    agency,
+    status,
+    created_date,
+    closed_date
+  )
+nyc_311_subset <- nyc_311_subset %>%
+  filter(!is.na(created_date))
+
+head(nyc_311_subset)
+```
+
+```{r}
+
+nyc_311_clean <- nyc_311_subset
+
+# Convert date columns to datetime format
+nyc_311_clean <- nyc_311_clean %>%
+  mutate(
+    created_date = parse_date_time(created_date, orders = c("mdy HMS p", "mdy HMS", "ymd HMS", "ymd HMSz")),
+    closed_date  = parse_date_time(closed_date,  orders = c("mdy HMS p", "mdy HMS", "ymd HMS", "ymd HMSz"))
+  )
+
+# Rows after filtering missing created_date
+nrow(nyc_311_subset)
+str(nyc_311_clean)
+```
+
+```{r}
+# Calculate response time (hours) only when closed_date exists
+# and treat negative / unrealistic values as invalid (set to NA)
+nyc_311_clean <- nyc_311_clean %>%
+  mutate(
+    response_time_hours = case_when(
+      is.na(closed_date) ~ NA_real_,
+      TRUE ~ as.numeric(difftime(closed_date, created_date, units = "hours"))
+    ),
+    response_time_hours = ifelse(response_time_hours < 0, NA_real_, response_time_hours),
+    response_time_hours = ifelse(response_time_hours > 24*365, NA_real_, response_time_hours)  # optional cap: > 1 year
+  )
+```
+
+## Quick Note
+
+During validation, some records produced negative response times because the closed timestamp occurred earlier than the created timestamp. This indicates inconsistent or erroneous timestamps in the source data. These negative values were treated as invalid and set to missing (NA) to avoid misleading results.
+
+```{r}
+summary(nyc_311_clean$response_time_hours)
+glimpse(nyc_311_clean)
+summary(nyc_311_clean)
+
+```
+
+## Top 10 Complaint Types
+
+```{r}
+complaint_summary <- nyc_311_clean %>%
+  count(complaint_type, sort = TRUE) %>%
+  mutate(
+    pct_label = scales::percent(n / sum(n), accuracy = 0.1)
+  ) %>%
+  slice_head(n = 10)
+
+complaint_summary
+
+ggplot(complaint_summary, aes(x = reorder(complaint_type, n), y = n)) +
+  geom_col() +
+  coord_flip() +
+  geom_text(aes(label = pct_label), hjust = -0.1) +
+  labs(
+    title = "Top 10 NYC 311 Complaint Types",
+    x = "Complaint Type",
+    y = "Count"
+  ) +
+  theme_minimal()
+
+```
+
+The Top 10 complaint categories provide a high-level view of what issues residents most frequently report through NYC 311. A small number of complaint types account for a large share of total requests, suggesting that many service demands are driven by recurring quality-of-life issues. This type of frequency analysis helps prioritize which categories are most important for deeper operational or policy-focused investigation.
+
+## Feature Engineering: Create an “issue_priority” label
+
+```{r}
+
+nyc_311_clean <- nyc_311_clean %>%
+  mutate(
+    issue_priority = case_when(
+      str_detect(tolower(complaint_type), "heat|hot water|electric|gas") ~ "High",
+      str_detect(tolower(complaint_type), "noise") ~ "Medium",
+      TRUE ~ "Low/Other"
+    )
+  )
+
+nyc_311_clean %>%
+  count(issue_priority, sort = TRUE)
+
+nyc_311_clean %>%
+  count(issue_priority) %>%
+  ggplot(aes(x = issue_priority, y = n)) +
+  geom_col() +
+  labs(
+    title = "Engineered Feature: Complaint Priority (Simple Rule-Based)",
+    x = "Priority",
+    y = "Count"
+  ) +
+  theme_minimal()
+
+
+```
+
+To demonstrate feature engineering, I created a simplified “issue_priority” variable by grouping complaints into High, Medium, and Low/Other categories using rule-based matching on complaint keywords (e.g., heat/hot water and utility-related issues). This engineered feature makes the dataset more interpretable for downstream analysis by reducing many complaint categories into broader urgency levels. While the classification rules are simple, they mirror real-world preprocessing where domain knowledge is used to create decision-support variables.
+
+## Borough comparison (counts + response time)
+
+```{r}
+borough_summary <- nyc_311_clean %>%
+  group_by(borough) %>%
+  summarise(
+    total_requests = n(),
+    closed_requests = sum(!is.na(response_time_hours)),
+    median_response_hours = median(response_time_hours, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_requests))
+
+borough_summary
+
+ggplot(borough_summary, aes(x = reorder(borough, total_requests), y = total_requests)) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Total NYC 311 Requests by Borough",
+    x = "Borough",
+    y = "Total Requests"
+  ) +
+  theme_minimal()
+
+
+```
+
+Comparing total service requests across boroughs highlights differences in reported service demand by location. Borough-level request volume can be influenced by multiple factors such as population size, housing density, local infrastructure, and reporting behavior. This comparison provides useful context for future work, such as normalizing requests by population or exploring borough-specific complaint patterns.
+
+## Conclusions
+
+This assignment demonstrated a reproducible workflow for acquiring and transforming a real-world administrative dataset using R and Quarto. The NYC 311 service request data was loaded directly from a public GitHub repository, column names were standardized for consistent use in code, and a meaningful subset of variables was selected to support downstream analysis. Key data preparation steps included handling missing values appropriately and converting timestamp fields into usable datetime formats.
+
+As a creative extension, I explored the distribution of complaint types across NYC by identifying the most frequent complaint categories, and I performed simple rule-based feature engineering to classify complaints into priority tiers. I also compared request volumes across boroughs to highlight differences in service demand by location.
